@@ -36,6 +36,11 @@ struct Home: View {
         Divider()
         
         HStack(spacing: 15){
+          
+          Image(systemName: "magnifyingglass")
+            .font(.title)
+            .foregroundColor(.gray)
+          
           TextField("Search", text: $HomeModel.search)
           
           if HomeModel.search != "" {
@@ -52,7 +57,39 @@ struct Home: View {
         
         Divider()
         
-        Spacer()
+        ScrollView(.vertical, showsIndicators: false, content : {
+          VStack(spacing: 25){
+            ForEach(HomeModel.filtered){ item in
+              ZStack(alignment: Alignment(horizontal: .center, vertical: .top), content: {
+                
+                ItemView(item: item)
+                
+                HStack{
+                  Text("FREE DELIVERY")
+                    .foregroundColor(.white)
+                    .padding(.vertical, 10)
+                    .padding(.horizontal)
+                    .background(Color.pink)
+                  
+                  Spacer(minLength: 0)
+                  
+                  Button(action: {}, label: {
+                    Image(systemName: "plus")
+                      .foregroundColor(.white)
+                      .padding(10)
+                      .background(Color.pink)
+                      .clipShape(Circle())
+                  })
+                }
+                .padding(.trailing, 10)
+                .padding(.top, 10)
+              })
+              .frame(width: UIScreen.main.bounds.width - 30)
+            }
+          }
+          .padding(.top, 30)
+        })
+        
       }
       
       HStack{
@@ -78,6 +115,20 @@ struct Home: View {
     }
     .onAppear(perform: {
       HomeModel.locationManager.delegate = HomeModel
+    })
+    .onChange(of: HomeModel.search, perform: { value in
+      
+      //to avoid continues search request
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.3){
+        if value == HomeModel.search && HomeModel.search != ""{
+          //search Data
+          HomeModel.filterData()
+        }
+      }
+      if HomeModel.search == ""{
+        //reset all data
+        withAnimation(.linear){HomeModel.filtered = HomeModel.items}
+      }
     })
   }
 }

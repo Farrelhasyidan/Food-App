@@ -7,6 +7,7 @@
 
 import SwiftUI
 import CoreLocation
+import Firebase
 
 class HomeViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
   
@@ -18,6 +19,9 @@ class HomeViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
   @Published var noLocation = false
   
   @Published var showMenu = false
+  
+  @Published var items: [Items] = []
+  @Published var filtered: [Items] = []
   
   func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
     switch manager.authorizationStatus {
@@ -45,6 +49,7 @@ class HomeViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     
     self.userLocation = locations.last
     self.extractLocation()
+    self.login()
   }
   
   func extractLocation(){
@@ -59,6 +64,53 @@ class HomeViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
       address += safeData.first?.locality ?? ""
       
       self.userAddress = address
+    }
+  }
+  func login(){
+    Auth.auth().signInAnonymously { (res, err) in
+     
+      if err != nil {
+        print(err!.localizedDescription)
+        return
+      }
+      
+      print("Success = \(res!.user.uid)")
+      
+      self.fetchData()
+    }
+  }
+  
+  func fetchData(){
+      
+      let db = Firestore.firestore()
+      
+      db.collection("Items").getDocuments{ (snap, err) in
+        
+        guard let itemData = snap else { return }
+        
+        self.items = itemData.documents.compactMap({ (doc) -> Items? in
+          
+          let id = doc.documentID
+          let name = doc.get("item_name") as! String
+          let cost = doc.get("item_cost") as! NSNumber
+          let ratings = doc.get("item_ratings") as! String
+          let image = doc.get("item_image") as! String
+          let details = doc.get("item_details") as! String
+          
+          return Items(id: id, item_name: name, item_cost: cost, item_details: details, item_image: image, item_ratings: ratings)
+                  
+        })
+        
+        self.filtered = self.items
+      }
+    }
+  
+  //search or filter
+  func filterData(){
+    withAnimation(.linear){
+      self.filtered = self.items.filter{
+        return $0.item_name.lowercased().contains(self.search.lowercased())
+      }
     }
   }
 }
